@@ -13,10 +13,12 @@ class BankAccount:
     # Constructor
     def __init__(self, name, type = None, balance = 0):
         self.name = name
+
         if type is None:
             self.type = BankAccount.__type_saving
         else:
             self.type = type
+
         if self.type == BankAccount.__type_saving:
             BankAccount.last_saving_number += 1
             self.account_number = f"{BankAccount.branch_number}-{BankAccount.__type_saving}-{BankAccount.last_saving_number}"
@@ -33,7 +35,10 @@ class BankAccount:
         print(f"----- Customer Record -----")
         print(f"Name: {self.name}")
         print(f"Account number: {self.account_number}")
-        print(f"Account type: {self.type}")
+        if self.type == 1:
+            print(f"Account type: saving")
+        else:
+            print(f"Account type: loan")
         print(f"Balance: {self.balance}")
         print(f"----- End Record -----")
     
