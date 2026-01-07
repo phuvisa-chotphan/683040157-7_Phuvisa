@@ -1,16 +1,57 @@
-from bank_acc import BankAccount
+"""
+Phuvisa Chotphan
+683040157-7
+P2
+"""
 
-John = BankAccount("John", 1 , 500)
-John.deposit(3000)
-John.print_customer()
+class BankAccount:
+    # Class attribute
+    branch_name = "KKU Complex"
+    branch_number = 1724
+    last_loan_number = 0
+    last_saving_number = 0
 
-Tim = BankAccount("Tim", 2 , -1000000)
-Tim.pay_loan(500000)
-Tim.print_customer()
+    # Private class attributes
+    # account types
+    __type_saving = 1
+    __type_loan = 2
 
-Sarah = BankAccount("Sarah", 1)
-Sarah.deposit(50000000)
-Sarah.print_customer()
+    # Constructor
+    def __init__(self, name, type = None, balance = 0):
+        self.name = name
 
-sarahloan = BankAccount("Sarah", 2, -100000000)
-sarahloan.print_customer()
+        if type is None:
+            self.type = BankAccount.__type_saving
+        else:
+            self.type = type
+
+        if self.type == BankAccount.__type_saving:
+            BankAccount.last_saving_number += 1
+            self.account_number = f"{BankAccount.branch_number}-{BankAccount.__type_saving}-{BankAccount.last_saving_number}"
+        else:
+            BankAccount.last_loan_number += 1
+            self.account_number = f"{BankAccount.branch_number}-{BankAccount.__type_loan}-{BankAccount.last_loan_number}"
+        if balance is None:
+            self.balance = 0
+        else:
+            self.balance = balance
+    
+    # Instance methods
+    def print_customer(self):
+        print(f"----- Customer Record -----")
+        print(f"Name: {self.name}")
+        print(f"Account number: {self.account_number}")
+        if self.type == 1:
+            print(f"Account type: saving")
+        else:
+            print(f"Account type: loan")
+        print(f"Balance: {self.balance}")
+        print(f"----- End Record -----")
+    
+    def deposit(self, amount=0):
+        self.balance += amount
+        return self.balance
+    
+    def pay_loan(self, amount=0):
+        self.balance += amount
+        return self.balance
