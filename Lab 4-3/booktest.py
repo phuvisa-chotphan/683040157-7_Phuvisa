@@ -19,6 +19,8 @@ textbook.check_out()
 # Display info
 print("Book Info:")
 book.display_info()
+book.return_item()
+book.display_info()
 print()
 
 print("TextBook Info:")

@@ -24,10 +24,10 @@ class LibraryItem:
         return False
     
     def return_item(self):
-        if not self._checked_out:
-            self._checked_out = True
-            return True
-        return False
+        if self._checked_out:
+            self._checked_out = False
+            return False
+        return True
 
     def display_info(self):
         
@@ -49,7 +49,7 @@ class Book(LibraryItem):
         self.pages_count = pages
 
     def display_info(self):
-        if self.check_out():
+        if not self.check_out():
             status = "Checked Out"
         else:
             status = "Avaliable"
