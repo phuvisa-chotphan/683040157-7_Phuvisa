@@ -1,4 +1,7 @@
-from P1 import Book, TextBook, Magazine
+from LibraryItem import LibraryItem, Book, TextBook, Magazine
+
+e = LibraryItem("aaaa", "A005")
+e.display_info()
 
 # Create objects
 book = Book("Harry Potter", "B001", "J.K. Rowling")

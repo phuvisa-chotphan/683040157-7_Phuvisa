@@ -34,6 +34,7 @@ class LibraryItem:
         print(f"Title : {self.title}")
         print(f"ID : {self._id}")
         print(f"Status : {self.get_status()}")
+        print(" ")
         
 
 
