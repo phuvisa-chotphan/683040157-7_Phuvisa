@@ -1,3 +1,9 @@
+"""
+Phuvisa Chotphan
+683040157-7
+P1
+"""
+
 from LibraryItem import LibraryItem, Book, TextBook, Magazine
 
 e = LibraryItem("aaaa", "A005")
