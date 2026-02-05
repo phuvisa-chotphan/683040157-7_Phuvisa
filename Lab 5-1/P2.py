@@ -51,6 +51,7 @@ class StudentRegistration(QWidget):
         self.date_edit.setDisplayFormat("dd/MM/yyyy")
         self.date_edit.setDate(QDate(2000, 1, 1))
         self.date_edit.setLocale(QLocale(QLocale.English, QLocale.UnitedStates))
+        self.date_edit.setMaximumWidth(200)
 
         label4 = QLabel("Date of Birth (dd/MM/yyyy):")
         form_layout.addRow(label4)
