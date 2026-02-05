@@ -6,7 +6,7 @@ P2
 
 import sys
 from PySide6.QtWidgets import (QApplication, QMainWindow ,QTextEdit, QVBoxLayout, QWidget, QHBoxLayout, QFormLayout, QLineEdit, QPushButton, QLabel, QDateEdit, QButtonGroup, QRadioButton, QComboBox, QCheckBox)
-from PySide6.QtCore import Qt, QDate
+from PySide6.QtCore import Qt, QDate, QLocale
 
 class StudentRegistration(QWidget):
     def __init__(self):
@@ -50,6 +50,7 @@ class StudentRegistration(QWidget):
         self.date_edit.setCalendarPopup(True)
         self.date_edit.setDisplayFormat("dd/MM/yyyy")
         self.date_edit.setDate(QDate(2000, 1, 1))
+        self.date_edit.setLocale(QLocale(QLocale.English, QLocale.UnitedStates))
 
         label4 = QLabel("Date of Birth (dd/MM/yyyy):")
         form_layout.addRow(label4)
