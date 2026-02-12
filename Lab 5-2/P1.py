@@ -245,6 +245,9 @@ class InputSection(QWidget):
 
             w = float(w_text)
             h = float(h_text)
+
+            if w <= 0 or h <= 0:
+                return None
             
             w_unit = self.combo_w_unit.currentText()
             h_unit = self.combo_h_unit.currentText()
