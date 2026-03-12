@@ -409,17 +409,19 @@ class MainWindow(QMainWindow):
         # clear current cards
         for card in self.cards:
             self.card_layout.removeWidget(card)
-        card.deleteLater()
+            card.deleteLater()
 
         self.cards.clear()
 
-        # add cards from file
+        # populate cards from data
         for task in self.tasks:
-            if not task.get("done"):
+            if not task.get("done", False):   # ← only show unfinished tasks
                 self._insert_card(task)
 
         self._refresh_count()
         self._refresh_empty()
+
+        visible_tasks = [t for t in self.tasks if not t.get("done", False)]
 
         msg = QMessageBox(self)
         msg.setStyleSheet("""
@@ -427,14 +429,15 @@ class MainWindow(QMainWindow):
         QPushButton { color: black; }
         """)
         msg.setWindowTitle("Loaded")
-        msg.setText(f"Loaded {len(self.tasks)} tasks.")
+        msg.setText(f"Loaded {len(visible_tasks)} tasks.")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec()
 
     # ── helpers ─────────────────────────────────
     def _refresh_count(self):
-        n    = len(self.tasks)
-        done = sum(1 for t in self.tasks if t.get("done"))
+        visible_tasks = [t for t in self.tasks if not t.get("done", False)]
+        n    = len(visible_tasks)
+        done = sum(1 for t in self.tasks if t.get("done", False))
         self.lbl_count.setText(f"{done}/{n} done")
 
     def _refresh_empty(self):
