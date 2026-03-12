@@ -437,7 +437,7 @@ class MainWindow(QMainWindow):
     def _refresh_count(self):
         visible_tasks = [t for t in self.tasks if not t.get("done", False)]
         n    = len(visible_tasks)
-        done = sum(1 for t in self.tasks if t.get("done", False))
+        done = 0
         self.lbl_count.setText(f"{done}/{n} done")
 
     def _refresh_empty(self):
