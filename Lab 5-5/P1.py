@@ -1,457 +1,642 @@
 """
-Phuvisa Chotphan
-683040157-7
+Chatchana Chaenban
+683040487-6
 P1
 """
 
 import sys
-import json
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QScrollArea, QLabel, QDialog,
-    QLineEdit, QComboBox, QDateEdit, QFormLayout,
-    QMessageBox, QFileDialog, QFrame, QSizePolicy
+    QApplication, QMainWindow, QWidget, QStackedWidget,
+    QVBoxLayout, QHBoxLayout, QGridLayout, QFormLayout,
+    QLabel, QLineEdit, QDateEdit, QSpinBox,
+    QPushButton, QDialog, QMessageBox, QScrollArea,
+    QFrame, QSizePolicy
 )
-from PySide6.QtCore import Qt, QDate, Signal
+from PySide6.QtCore import Qt, Signal, QDate
 from PySide6.QtGui import QFont
 
+class RoomCard(QWidget):
+    """
+    Room information card — Custom Widget Class
+    Practice:
+      - Inheriting QWidget
+      - Signal to pass data to parent
+      - select() / deselect() methods to change visual state
+    """
 
-# ─────────────────────────────────────────────
-#  Priority config
-# ─────────────────────────────────────────────
-PRIORITY_LEVELS = ["Low", "Medium", "High", "Critical"]
+    # Signal: emits (room_name, price) when user clicks Select
+    room_selected = Signal(str, int)
 
-PRIORITY_COLORS = {
-    "Low":      "#d4edda",   # soft green
-    "Medium":   "#cce5ff",   # soft blue
-    "High":     "#fff3cd",   # soft yellow
-    "Critical": "#f8d7da",   # soft red
-}
+    def __init__(self, room_name: str, price: int, description: str, emoji: str = "🏨"):
+        super().__init__()
+        self._is_selected = False
+        self._room_name = room_name
+        self._price = price
 
-PRIORITY_BORDER = {
-    "Low":      "#28a745",
-    "Medium":   "#4a90d9",
-    "High":     "#ffc107",
-    "Critical": "#dc3545",
-}
+        self._build_ui(emoji, description)
+        self.deselect()
 
-PRIORITY_BADGE = {
-    "Low":      ("#28a745", "#ffffff"),
-    "Medium":   ("#4a90d9", "#ffffff"),
-    "High":     ("#ffc107", "#000000"),
-    "Critical": ("#dc3545", "#ffffff"),
-}
+    def _build_ui(self, emoji: str, description: str):
+        self.setFixedSize(200, 200)
+        self.setCursor(Qt.PointingHandCursor)
 
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(6)
 
-# ─────────────────────────────────────────────
-#  TaskCard – individual card widget
-# ─────────────────────────────────────────────
-class TaskCard(QFrame):
-    """A card that represents a single to-do item."""
+        # create labels button
+        self.room_label = QLabel(emoji)
+        self.room_label.setAlignment(Qt.AlignCenter)
+        self.room_label.setFont(QFont("Segoe UI Emoji", 28))
 
-    delete_requested = Signal(object)   # emits itself
+        self.name_label = QLabel(self._room_name)
+        self.name_label.setAlignment(Qt.AlignCenter)
+        self.name_label.setFont(QFont("Segoe UI", 11, QFont.Bold))
 
-    def __init__(self, task: dict, parent=None):
+        self.price_label = QLabel(f"${self._price} / night")
+        self.price_label.setAlignment(Qt.AlignCenter)
+
+        self.desc_label = QLabel(description)
+        self.desc_label.setAlignment(Qt.AlignCenter)
+        self.desc_label.setWordWrap(True)
+        self.desc_label.setStyleSheet("color: gray; font-size: 11px;")
+
+        self.select_btn = QPushButton("Select Room")
+        self.select_btn.clicked.connect(self._on_select_clicked)
+
+        # add in layout
+        layout.addWidget(self.room_label)
+        layout.addWidget(self.name_label)
+        layout.addWidget(self.price_label)
+        layout.addWidget(self.desc_label)
+        layout.addStretch()
+        layout.addWidget(self.select_btn)
+
+    def _on_select_clicked(self):
+        """When button is clicked, emit signal to notify parent"""
+        self._is_selected = True
+        self.room_selected.emit(self._room_name, self._price)
+        
+
+    # Appearance and state when the button is selected
+    def select(self):
+        """Change to selected state (green border)"""
+
+        self.setStyleSheet("""
+            RoomCard {
+                background-color: #f0fdf4;
+                border: 2px solid #22c55e;
+                border-radius: 12px;
+            }
+        """)
+        self.select_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #22c55e;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 5px;
+                font-weight: bold;
+            }
+        """)
+        self.select_btn.setText("✓ Selected")
+
+    def deselect(self):
+        """Change back to normal state"""
+
+        self.setStyleSheet("""
+            RoomCard {
+                background-color: #ffffff;
+                border: 2px solid #e5e7eb;
+                border-radius: 12px;
+            }
+            RoomCard:hover {
+                border: 2px solid #6366f1;
+                background-color: #f5f3ff;
+            }
+        """)
+        self.select_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6366f1;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 5px;
+            }
+            QPushButton:hover { background-color: #4f46e5; }
+        """)
+        self.select_btn.setText("Select Room")
+
+    def is_selected(self):
+        return self._is_selected
+    
+class ComfirmDialog(QDialog):
+    """
+    Booking confirmation popup — Custom Dialog Class
+    Practice:
+      - Inheriting QDialog
+      - Building layout and widgets inside the dialog manually
+    """
+
+    def __init__(self, guest_name: str, room_name: str, parent=None):
         super().__init__(parent)
-        self.task = task
+        self.setWindowTitle("Booking Comfirmed")
+        self.setFixedSize(360, 220)
+        self.setModal(True)
+        self._build_ui(guest_name, room_name)
+
+    def _build_ui(self, guest_name: str, room_name: str):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(12)
+
+        # create labels and button
+        icon = QLabel("✅")
+        icon.setAlignment(Qt.AlignCenter)
+        icon.setFont(QFont("Segoe UI Emoji", 30))
+
+        title = QLabel("Booking Successful!")
+        title.setAlignment(Qt.AlignCenter)
+        title.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        title.setStyleSheet("color: #22c55e;")
+
+        message = QLabel(f"Dear {guest_name},\n{room_name} is ready to welcome to you!🎉")
+        message.setAlignment(Qt.AlignCenter)
+
+        ok_btn = QPushButton("OK")
+        ok_btn.setFixedHeight(36)
+        ok_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #22c55e;
+                color: white;
+                border-radius: 8px;
+            }
+        """)
+        ok_btn.clicked.connect(self.accept)
+
+        # add labels and buuton in layout
+        layout.addWidget(icon)
+        layout.addWidget(title)
+        layout.addWidget(message)
+        layout.addStretch()
+        layout.addWidget(ok_btn)
+
+
+class BookingPage(QWidget): # Page1 Booking Page
+    """
+    Page 1 — Guest information form and room selection
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.selected_room = None
+        self.selected_price = 0
+        self.cards = [] # list of RoomCard 
         self._build_ui()
-        self._apply_style()
 
     def _build_ui(self):
-        self.setFixedHeight(100)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
 
-        priority = self.task.get("priority", "Low")
-        border_color = PRIORITY_BORDER[priority]
+        container = QWidget()
+        main_layout = QVBoxLayout(container)
+        main_layout.setContentsMargins(30, 24, 30, 24)
+        main_layout.setSpacing(20)
+        # add widget to main_layout
 
-        # Top row: title + Done button
-        top_row = QHBoxLayout()
-        top_row.setSpacing(8)
+        #title
+        title = QLabel("🏨 Book Your Stay at CozyStay")
+        title.setFont(QFont("Segoe UI", 18, QFont.Bold))
+        title.setStyleSheet("color: #1e1b4b")
 
-        self.lbl_title = QLabel(self.task["title"])
-        self.lbl_title.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        self.lbl_title.setWordWrap(True)
-        self.lbl_title.setStyleSheet("color:#1a1a2e;")
-        top_row.addWidget(self.lbl_title, stretch=1)
+        subtitle = QLabel("Fill in your details and choose your room")
+        subtitle.setFont(QFont("Segoe UI", 10))
+        subtitle.setStyleSheet("color: #6b7280")
 
-        btn_done = QPushButton("✓ Done")
-        btn_done.setFixedSize(72, 28)
-        btn_done.setCursor(Qt.PointingHandCursor)
-        btn_done.setToolTip("Mark as done and remove")
-        btn_done.setStyleSheet(
-            f"QPushButton{{background:transparent; border:1.5px solid {border_color};"
-            f"border-radius:6px; font-size:9pt; color:{border_color}; font-weight:bold;}}"
-            f"QPushButton:hover{{background:{border_color}; color:#fff;}}"
-        )
-        btn_done.clicked.connect(lambda: self.delete_requested.emit(self))
-        top_row.addWidget(btn_done, alignment=Qt.AlignTop)
+        # ── Section 1: Guest Info Form ──
+        form_title = QLabel("📋 Guest Information")
+        form_title.setFont(QFont("Segoe UI", 12, QFont.Bold))
+        form_title.setStyleSheet("color: #374151; margin-top: 8px;")
 
-        # Bottom row: deadline + badge
-        bottom_row = QHBoxLayout()
-        bottom_row.setSpacing(8)
+        main_layout.addWidget(form_title)
 
-        deadline_str = self.task.get("deadline", "No deadline")
-        lbl_dead = QLabel(f"📅  {deadline_str}")
-        lbl_dead.setFont(QFont("Segoe UI", 9))
-        lbl_dead.setStyleSheet("color:#555;")
-        bottom_row.addWidget(lbl_dead)
-        bottom_row.addStretch()
-
-        bg, fg = PRIORITY_BADGE[priority]
-        badge = QLabel(priority.upper())
-        badge.setFixedSize(70, 20)
-        badge.setAlignment(Qt.AlignCenter)
-        badge.setStyleSheet(
-            f"background:{bg}; color:{fg}; border-radius:9px;"
-            f"font-size:8px; font-weight:bold; letter-spacing:1px;"
-        )
-        bottom_row.addWidget(badge)
-
-        # Assemble
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(14, 10, 14, 10)
-        outer.setSpacing(6)
-        outer.addLayout(top_row)
-        outer.addLayout(bottom_row)
-
-    def _apply_style(self):
-        priority = self.task.get("priority", "Low")
-        bg     = PRIORITY_COLORS[priority]
-        border = PRIORITY_BORDER[priority]
-        self.setStyleSheet(
-            f"TaskCard{{background:{bg}; border:1.5px solid {border};"
-            f"border-radius:12px;}}"
-            f"TaskCard:hover{{border:2px solid {border};}}"
-        )
-
-
-# ─────────────────────────────────────────────
-#  AddTaskDialog – pop-up form
-# ─────────────────────────────────────────────
-class AddTaskDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Add New Task")
-        self.setFixedSize(300, 250)
-        self.setStyleSheet("""
-            QDialog   { background: #f8f9fa; }
-            QLabel    { font-family:'Segoe UI'; font-size:10pt; color:#333; }
-            QLineEdit {
-                border:1.5px solid #ced4da; border-radius:8px;
-                padding:6px 10px; font-size:10pt; background:#fff;
+        form_frame = QFrame()
+        form_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f9fafb;
+                border-radius: 10px;
             }
-            QLineEdit:focus { border-color:#4a90d9; }
-            QComboBox {
-                border:1.5px solid #ced4da; border-radius:8px;
-                padding:5px 10px; font-size:10pt; background:#fff;
-            }
-            QCalendarWidget { border:1px solid #ced4da; border-radius:8px; }
         """)
+
+        # create widgets inputs *****
+        self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("e.g. John Smith")
+        self.name_input.setStyleSheet("color: black;")
+
+        self.phone_input = QLineEdit()
+        self.phone_input.setPlaceholderText("e.g. 08x-xxx-xxxx")
+
+        self.checkin_input = QDateEdit()
+        self.checkin_input.setDate(QDate.currentDate())
+        self.checkin_input.setDisplayFormat("dd/MM/yyyy")
+
+        self.checkout_input = QDateEdit()
+        self.checkout_input.setDate(QDate.currentDate().addDays(1))
+        self.checkout_input.setDisplayFormat("dd/MM/yyyy")
+
+        self.guests_input = QSpinBox()
+        self.guests_input.setRange(1, 10)
+        self.guests_input.setValue(1)
+        self.guests_input.setSuffix(" guest(s)")
+
+        # Set style for inputs and their labels
+        input_style = """
+            QLineEdit, QDateEdit, QSpinBox {
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                padding: 6px 10px;
+                font-size: 13px;
+                background: white;
+                color: black;
+            }
+            QLineEdit:focus, QDateEdit:focus, QSpinBox:focus {
+                border: 1px solid #6366f1;
+                background-color: white;
+                color: black;
+            }
+            QLineEdit::placeholder {
+                color: #9ca3af;
+            }
+        """
+        for w in [self.name_input, self.phone_input,
+                  self.checkin_input, self.checkout_input, self.guests_input]:
+            w.setStyleSheet(input_style)
+            w.setMinimumWidth(200)
+
+        # create form
+        form_layout = QFormLayout(form_frame)
+        form_layout.setContentsMargins(20, 20, 20, 20)
+        form_layout.setSpacing(12)
+
+        label_style = "font-size: 13px; color: #374151; font-weight: bold;"
+
+        for text, widget in [
+            ("Full Name :",       self.name_input),
+            ("Phone Number :",    self.phone_input),
+            ("Check-in Date :",   self.checkin_input),
+            ("Check-out Date :",  self.checkout_input),
+            ("Guests :",          self.guests_input),
+        ]:
+            lbl = QLabel(text)
+            lbl.setStyleSheet(label_style)
+
+            # add label and widget to your layout
+            form_layout.addRow(lbl, widget)
+        
+        main_layout.addWidget(form_frame)
+
+
+        # ── Section 2: Room Selection ──
+        room_title = QLabel("🛏 Select a Room")
+        room_title.setFont(QFont("Segoe UI", 12, QFont.Bold))
+        room_title.setStyleSheet("color: #374151; margin-top: 8px;")
+        main_layout.addWidget(room_title)
+
+        rooms_data = [
+            ("Standard Room", 50,  "Single bed, Free Wi-Fi",             "🛏"),
+            ("Deluxe Room",   120, "Double bed, Ocean view, Wi-Fi",      "🌊"),
+            ("Suite Room",    250, "Living room, Jacuzzi, Premium view", "👑"),
+            ("Family Room",   160, "2 Bedrooms, Perfect for families",   "👨‍👩‍👧‍👦"),
+        ]
+
+        cards_layout = QHBoxLayout()
+        cards_layout.setSpacing(14)
+        cards_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Create cards according to the info above
+        # Remember to put each card in self.cards
+        # also catch the emitted signal from each card
+        self.cards_layout = QHBoxLayout()
+        self.cards_layout.setSpacing(14)
+        self.cards_layout.setContentsMargins(0, 0, 0, 0)
+
+        for name, price, desc, emoji in rooms_data:
+            card = RoomCard(name, price, desc, emoji)
+            card.room_selected.connect(self._on_room_selected)
+            self.cards.append(card)
+            cards_layout.addWidget(card)
+
+        cards_layout.addStretch()
+        main_layout.addLayout(cards_layout)
+
+
+        # ── Buttons ──
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
+
+        self.clear_btn = QPushButton("🗑  Clear Info")
+        self.clear_btn.setFixedHeight(42)
+        self.clear_btn.setFont(QFont("Segoe UI", 11))
+        self.clear_btn.setCursor(Qt.PointingHandCursor)
+        self.clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f3f4f6;
+                color: #374151;
+                border: 1px solid #d1d5db;
+                border-radius: 8px;
+                padding: 0 20px;
+            }
+            QPushButton:hover { background-color: #e5e7eb; }
+        """)
+        # Connect the button's signal to a slot
+        self.clear_btn.clicked.connect(self.clear_form)
+
+        self.next_btn = QPushButton("Next  →")
+        self.next_btn.setFixedHeight(42)
+        self.next_btn.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        self.next_btn.setCursor(Qt.PointingHandCursor)
+        self.next_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6366f1;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 0 28px;
+            }
+            QPushButton:hover { background-color: #4f46e5; }
+        """)
+
+        btn_layout.addWidget(self.clear_btn)
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.next_btn)
+
+        main_layout.addLayout(btn_layout)
+        main_layout.addStretch()
+
+        scroll.setWidget(container)
+
+        page_layout = QVBoxLayout(self)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.addWidget(scroll)
+
+    def _on_room_selected(self, room_name: str, price: int):
+        """Receive signal from RoomCard, update state, deselect other cards"""
+        self.selected_room = room_name
+        self.selected_price = price
+
+        for card in self.cards:
+            if card._room_name == room_name:
+                card.select()
+            else:
+                card.deselect()
+
+
+    def clear_form(self):
+        """Clear all form fields and deselect all room cards"""
+        self.name_input.clear()
+        self.phone_input.clear()
+        self.checkin_input.setDate(QDate.currentDate())
+        self.checkout_input.setDate(QDate.currentDate().addDays(1))
+        self.guests_input.setValue(1)
+
+        self.selected_room = None
+        self.selected_price = 0
+        for card in self.cards:
+            card.deselect()
+
+    def get_booking_data(self):
+        """Collect form data — returns None if validation fails"""
+        name = self.name_input.text().strip()
+        phone = self.phone_input.text().strip()
+        checkin = self.checkin_input.date()
+        checkout = self.checkout_input.date()
+        guests = self.guests_input.value()
+
+        if not name:
+            QMessageBox.warning(self, "Missing Information", "Please enter your full name.")
+            return None
+        if not phone:
+            QMessageBox.warning(self, "Missing Information", "Please enter your phone number.")
+            return None
+        if checkin >= checkout:
+            QMessageBox.warning(self, "Invalid Dates",
+                                "Check-out date must be after check-in date.")
+            return None
+        if not self.selected_room:
+            QMessageBox.warning(self, "No Room Selected",
+                                "Please select a room before proceeding.")
+            return None
+
+        nights = checkin.daysTo(checkout)
+        total = nights * self.selected_price
+
+        # Create a dictionary of all values to be returned
+        return {
+            "room": self.selected_room,
+            "price": self.selected_price,
+            "name": name,
+            "phone": phone,
+            "checkin": checkin.toString("dd/MM/yyyy"),
+            "checkout": checkout.toString("dd/MM/yyyy"),
+            "nights": nights,
+            "guests": guests,
+            "total": total
+        }
+# ─────────────────────────────────────────────
+#  PAGE 2: ReviewPage
+# ─────────────────────────────────────────────
+class ReviewPage(QWidget):
+
+    def __init__(self):
+        super().__init__()
+        self.current_data = {}
         self._build_ui()
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 20, 24, 20)
-        layout.setSpacing(14)
+        layout.setContentsMargins(40, 30, 40, 30)
+        layout.setSpacing(16)
 
-        heading = QLabel("New Task")
-        heading.setFont(QFont("Segoe UI", 14, QFont.Bold))
-        heading.setStyleSheet("color:#222;")
-        layout.addWidget(heading)
+        title = QLabel("📋 Booking Summary")
+        title.setFont(QFont("Segoe UI", 18, QFont.Bold))
+        title.setStyleSheet("color: #1e1b4b;")
 
-        form = QFormLayout()
-        form.setSpacing(10)
-        form.setLabelAlignment(Qt.AlignRight)
+        subtitle = QLabel("Please review your details before confirming")
+        subtitle.setFont(QFont("Segoe UI", 10))
+        subtitle.setStyleSheet("color: #6b7280;")
 
-        self.inp_title = QLineEdit()
-        self.inp_title.setPlaceholderText("Enter task name…")
-        self.inp_title.setStyleSheet("color: black;")
-        form.addRow("Task:", self.inp_title)
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
 
-        self.cmb_priority = QComboBox()
-        self.cmb_priority.addItems(PRIORITY_LEVELS)
-        self.cmb_priority.setStyleSheet("color: black;")
-        form.addRow("Priority:", self.cmb_priority)
+        self.info_frame = QFrame()
+        self.info_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f9fafb;
+                border-radius: 12px;
+            }
+        """)
 
-        self.date_edit = QDateEdit()
-        self.date_edit.setDate(QDate.currentDate())
-        self.date_edit.setMinimumDate(QDate.currentDate())
-        self.date_edit.setDisplayFormat("yyyy-MM-dd")
-        self.date_edit.setCalendarPopup(True)   # ← คลิกแล้ว popup calendar
-        self.date_edit.setStyleSheet("color: black;")
-        form.addRow("Deadline:", self.date_edit)
+        self.info_layout = QGridLayout(self.info_frame)
 
-        layout.addLayout(form)
+        # key_name , display_text
+        display_data = [
+            ("room",     "🛏  Room"),
+            ("price",    "💰  Price / Night"),
+            ("name",     "👤  Guest Name"),
+            ("phone",    "📞  Phone"),
+            ("checkin",  "📅  Check-in"),
+            ("checkout", "📅  Check-out"),
+            ("nights",   "🌙  Nights"),
+            ("guests",   "👥  Guests"),
+        ]
 
-        btn_row = QHBoxLayout()
+        key_style = "font-weight: bold; color: #374151; font-size: 13px;"
+        val_style = "color: #1f2937; font-size: 13px;"
 
-        btn_cancel = QPushButton("Cancel")
-        btn_cancel.setFixedHeight(36)
-        btn_cancel.setStyleSheet(
-            "QPushButton{background:#e9ecef;border:none;border-radius:8px;"
-            "font-size:10pt;color:#555;}"
-            "QPushButton:hover{background:#dee2e6;}"
-        )
-        btn_cancel.clicked.connect(self.reject)
+        self.value_labels = {}
 
-        btn_add = QPushButton("Add Task")
-        btn_add.setFixedHeight(36)
-        btn_add.setStyleSheet(
-            "QPushButton{background:#4a90d9;border:none;border-radius:8px;"
-            "font-size:10pt;color:#fff;font-weight:bold;}"
-            "QPushButton:hover{background:#357abd;}"
-        )
-        btn_add.clicked.connect(self._on_add)
+        for row, (key_name, display_text) in enumerate(display_data):
+            key_lbl = QLabel(display_text)
+            key_lbl.setStyleSheet(key_style)
 
-        btn_row.addWidget(btn_cancel)
-        btn_row.addSpacing(10)
-        btn_row.addWidget(btn_add)
-        layout.addLayout(btn_row)
+            val_lbl = QLabel("-")
+            val_lbl.setStyleSheet(val_style)
 
-    def _on_add(self):
-        if not self.inp_title.text().strip():
-            msg = QMessageBox(self)
-            msg.setStyleSheet("""
-            QLabel { color: black; }
-            QPushButton { color: black; }
-            """)
-            msg.setWindowTitle("Missing Info")
-            msg.setText("Please enter a task name.")
-            msg.setIcon(QMessageBox.Warning)
-            msg.setStandardButtons(QMessageBox.Ok)
-            msg.exec()
-            return
-        self.accept()
+            self.info_layout.addWidget(key_lbl, row, 0)
+            self.info_layout.addWidget(val_lbl, row, 1)  # ✅ correct
 
-    def get_task(self) -> dict:
-        return {
-            "title": self.inp_title.text().strip(),
-            "deadline": self.date_edit.date().toString("yyyy-MM-dd"),
-            "priority": self.cmb_priority.currentText(),
-            "done": False
-        }
+            self.value_labels[key_name] = val_lbl
 
+        layout.addWidget(self.info_frame)
 
-# ─────────────────────────────────────────────
-#  MainWindow
-# ─────────────────────────────────────────────
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("📝  To-Do List")
-        self.setMinimumSize(560, 600)
-        self.resize(640, 720)
-        self.tasks: list[dict] = []
-        self.cards: list[TaskCard] = []
-        self._build_ui()
-        self._apply_global_style()
-
-    def _build_ui(self):
-        central = QWidget()
-        self.setCentralWidget(central)
-        root = QVBoxLayout(central)
-        root.setContentsMargins(20, 16, 20, 16)
-        root.setSpacing(12)
-
-        # Header
-        header = QHBoxLayout()
-        app_title = QLabel("My To-Do List")
-        app_title.setFont(QFont("Segoe UI", 18, QFont.Bold))
-        app_title.setStyleSheet("color:#1a1a2e;")
-        header.addWidget(app_title)
-        header.addStretch()
-        self.lbl_count = QLabel("0 tasks")
-        self.lbl_count.setStyleSheet("color:#888; font-size:10pt;")
-        header.addWidget(self.lbl_count)
-        root.addLayout(header)
-
-        # Toolbar
-        toolbar = QHBoxLayout()
-        toolbar.setSpacing(8)
-        btn_add  = self._make_btn("＋  Add Task",  "#4a90d9", "#357abd")
-        btn_load = self._make_btn("📂  Load JSON", "#6c757d", "#545b62")
-        btn_save = self._make_btn("💾  Save JSON", "#28a745", "#1e7e34")
-        btn_add.clicked.connect(self._add_task)
-        btn_load.clicked.connect(self._load_json)
-        btn_save.clicked.connect(self._save_json)
-        toolbar.addWidget(btn_add)
-        toolbar.addWidget(btn_load)
-        toolbar.addWidget(btn_save)
-        toolbar.addStretch()
-        root.addLayout(toolbar)
-
-        # Divider
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
-        line.setStyleSheet("color:#dee2e6;")
-        root.addWidget(line)
+        line.setStyleSheet("color: #e5e7eb;")
+        layout.addWidget(line)
 
-        # Scroll area
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(QFrame.NoFrame)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.card_container = QWidget()
-        self.card_layout = QVBoxLayout(self.card_container)
-        self.card_layout.setContentsMargins(0, 4, 0, 4)
-        self.card_layout.setSpacing(10)
-        self.card_layout.addStretch()
-        self.scroll_area.setWidget(self.card_container)
-        root.addWidget(self.scroll_area, stretch=1)
+        self.total_label = QLabel("💳  Total Amount: $0")
+        self.total_label.setAlignment(Qt.AlignRight)
+        self.total_label.setFont(QFont("Segoe UI", 13, QFont.Bold))
+        self.total_label.setStyleSheet("color: #6366f1;")
+        layout.addWidget(self.total_label)
 
-        # Empty state
-        self.lbl_empty = QLabel("No tasks yet.\nClick  ＋ Add Task  to get started!")
-        self.lbl_empty.setAlignment(Qt.AlignCenter)
-        self.lbl_empty.setStyleSheet("color:#bbb; font-size:12pt;")
-        self.card_layout.insertWidget(0, self.lbl_empty) 
+        layout.addStretch()
 
-        self._refresh_empty()
+        btn_layout = QHBoxLayout()
 
+        self.back_btn = QPushButton("←  Back")
+        self.submit_btn = QPushButton("✅  Confirm Booking")
+
+        btn_layout.addWidget(self.back_btn)
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.submit_btn)
+
+        layout.addLayout(btn_layout)
+
+    def load_data(self, data: dict):
+
+        self.current_data = data
+
+        self.value_labels["room"].setText(data["room"])
+        self.value_labels["price"].setText(f"${data['price']}")
+        self.value_labels["name"].setText(data["name"])
+        self.value_labels["phone"].setText(data["phone"])
+        self.value_labels["checkin"].setText(data["checkin"])
+        self.value_labels["checkout"].setText(data["checkout"])
+        self.value_labels["nights"].setText(f"{data['nights']} night(s)")
+        self.value_labels["guests"].setText(f"{data['guests']} guest(s)")
+
+        self.total_label.setText(f"💳  Total Amount: ${data['total']}")
+
+
+class MainWindow(QMainWindow):
+    """
+    Main window — uses QStackedWidget to manage 2 pages
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("CozyStay — Hotel Booking System")
+        self.setMinimumSize(820, 680)
+        self.resize(900, 720)
+
+        # QStackedWidget as central widget
+        self.stack = QStackedWidget()
+        self.setCentralWidget(self.stack)
+
+        # Create pages
+        self.booking_page = BookingPage()
+        self.review_page = ReviewPage()
+
+        self.stack.addWidget(self.booking_page)
+        self.stack.addWidget(self.review_page)
+
+        # Add to stack: index 0 = booking, index 1 = review
         
-    def _make_btn(self, text, color, hover) -> QPushButton:
-        btn = QPushButton(text)
-        btn.setFixedHeight(36)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet(
-            f"QPushButton{{background:{color};border:none;border-radius:8px;"
-            f"font-size:10pt;color:#fff;padding:0 14px;}}"
-            f"QPushButton:hover{{background:{hover};}}"
-        )
-        return btn
 
-    def _apply_global_style(self):
+        # Connect navigation
+        # booking page: connect next_btn
+        # review page: connect back_btn
+        # review page: connect submit_btn
+        self.booking_page.next_btn.clicked.connect(self._go_to_review)
+        self.review_page.back_btn.clicked.connect(self._go_to_booking)
+        self.review_page.submit_btn.clicked.connect(self._on_submit)
+
+        # Start on page 0
+        # Set current stack index to the first page
+        self.stack.setCurrentIndex(0)
+
         self.setStyleSheet("""
-            QMainWindow { background:#f0f2f5; }
-            QWidget     { background:#f0f2f5; }
-            QScrollArea { background:transparent; }
-            QScrollBar:vertical {
-                background:#e9ecef; width:8px; border-radius:4px;
-            }
-            QScrollBar::handle:vertical {
-                background:#adb5bd; border-radius:4px; min-height:20px;
-            }
+            QMainWindow { background-color: #f0f0ff; }
+            QScrollArea  { background-color: transparent; }
+            QWidget      { font-family: 'Segoe UI', 'Tahoma', sans-serif; }
         """)
 
-    # ── task management ─────────────────────────
-    def _add_task(self):
-        dlg = AddTaskDialog(self)
-        if dlg.exec() == QDialog.Accepted:
-            # get task from dialog and add it to the DB dit
-            task = dlg.get_task()
+    # Slot for the next_btn on the booking page
+    def _go_to_review(self):
+        """Validate form, then switch to Review page"""
+        
+        data = self.booking_page.get_booking_data() # get booking data
 
-            # add to DB
-            self.tasks.append(task)
-
-            # create UI card
-            self._insert_card(task)
-
-            # update UI
-            self._refresh_count()
-            self._refresh_empty()
-            
-
-    def _insert_card(self, task: dict):
-        card = TaskCard(task)
-        card.delete_requested.connect(self._remove_card)
-        idx = self.card_layout.count() - 1   # before trailing stretch
-        self.card_layout.insertWidget(idx, card)
-        self.cards.append(card)
-
-    def _remove_card(self, card: TaskCard):
-        card.task["done"] = True   # ← mark done ใน DB
-        self.cards.remove(card)
-        self.card_layout.removeWidget(card)
-        card.deleteLater()
-        self._refresh_count()
-        self._refresh_empty()
-
-
-    # ── JSON IO ─────────────────────────────────
-    def _save_json(self):
-        path, _ = QFileDialog.getSaveFileName(
-        self,
-        "Save Tasks",
-        "",
-        "JSON Files (*.json)"
-        )
-
-        if not path:
+        if data is None:
             return
+        
+        # Load data into the review page
+        self.review_page.load_data(data)
 
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(self.tasks, f, indent=4)
+        # Set stack index to the review page
+        self.stack.setCurrentIndex(1)
 
-        msg = QMessageBox(self)
-        msg.setStyleSheet("""
-        QLabel { color: black; }
-        QPushButton { color: black; }
-        """)
-        msg.setWindowTitle("Saved")
-        msg.setText("Tasks saved to:\npath")
-        msg.setStandardButtons(QMessageBox.Ok)
-        msg.exec()
-
-    def _load_json(self):
-        # load a chosen file and get data
-        path, _ = QFileDialog.getOpenFileName(
-        self,
-        "Load Tasks",
-        "",
-        "JSON Files (*.json)"
-        )
-
-        if not path:
-            return
-
-        with open(path, "r", encoding="utf-8") as f:
-            self.tasks = json.load(f)
-
-        # clear current cards
-        for card in self.cards:
-            self.card_layout.removeWidget(card)
-            card.deleteLater()
-
-        self.cards.clear()
-
-        # populate cards from data
-        for task in self.tasks:
-            if not task.get("done", False):   # ← only show unfinished tasks
-                self._insert_card(task)
-
-        self._refresh_count()
-        self._refresh_empty()
-
-        visible_tasks = [t for t in self.tasks if not t.get("done", False)]
-
-        msg = QMessageBox(self)
-        msg.setStyleSheet("""
-        QLabel { color: black; }
-        QPushButton { color: black; }
-        """)
-        msg.setWindowTitle("Loaded")
-        msg.setText(f"Loaded {len(visible_tasks)} tasks.")
-        msg.setStandardButtons(QMessageBox.Ok)
-        msg.exec()
-
-    # ── helpers ─────────────────────────────────
-    def _refresh_count(self):
-        visible_tasks = [t for t in self.tasks if not t.get("done", False)]
-        n    = len(visible_tasks)
-        done = 0
-        self.lbl_count.setText(f"{done}/{n} done")
-
-    def _refresh_empty(self):
-        has = len(self.tasks) > 0
-        self.lbl_empty.setVisible(not has)
-        #self.scroll_area.setVisible(has)
+    # Slot for the back_btn on the review page
+    def _go_to_booking(self):
+        """Go back to Booking page, form data remains intact"""
+        self.stack.setCurrentIndex(0)
 
 
-# ─────────────────────────────────────────────
-#  Entry point
-# ─────────────────────────────────────────────
-if __name__ == "__main__":
+    # slot for the submit_btn on the review page
+    def _on_submit(self):
+        """Show ConfirmDialog, then reset the entire app"""
+        data = self.review_page.current_data
+        # Create a ConfirmDialog object
+        # passing in the name and room
+        # then show the dialog
+        dialog = ComfirmDialog(data["name"], data["room"], self)
+        dialog.exec()
+
+        # Clear booking page data
+        self.booking_page.clear_form()
+        # Show the booking page
+        self.stack.setCurrentIndex(0)
+
+
+def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()
